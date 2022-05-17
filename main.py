@@ -1,4 +1,4 @@
-import pygame, sys
+import pygame, sys, random
 from pygame.locals import *
 
 from constants import *
@@ -10,6 +10,8 @@ clock = pygame.time.Clock()
 
 
 pygame.init()
+pygame.mixer.pre_init()
+
 pygame.display.set_caption("Fazendo um jogo de plataforma")
 
 
@@ -23,6 +25,14 @@ player.set_colorkey(COLOR_KEY)
 player_rect = pygame.rect.Rect(50, 100, player.get_width(), player.get_height())
 
 grass = pygame.image.load("./images/grass.png")
+grass_sounds = [pygame.mixer.Sound("./sounds/grass_0.wav"), pygame.mixer.Sound("./sounds/grass_1.wav")]
+grass_sounds[0].set_volume(0.2)
+grass_sounds[1].set_volume(0.2)
+grass_sound_timer = 0
+
+pygame.mixer.music.load("./sounds/music.wav")
+pygame.mixer.music.play(-1)
+
 dirt = pygame.image.load("./images/dirt.png")
 
 global animation_frames
@@ -31,6 +41,9 @@ animation_frames = {}
 gravity = GRAVITY
 momentum = VERTICAL_MOMENTUM
 air_timer = 0
+
+jump_sound = pygame.mixer.Sound("./sounds/jump.wav")
+
 
 scroll = [0, 0]
 true_scroll = [0, 0]
@@ -133,7 +146,6 @@ player_flip = False
 run = True
 while run :
 
-
     # Preenchimento de fundo e paralax
 
     display.fill(SKY_BLUE)
@@ -181,6 +193,11 @@ while run :
         y_tile += 16
 
 
+    # Sound effects
+
+    if grass_sound_timer > 0 :
+        grass_sound_timer -= 1
+
     
     # Movimentação do player
 
@@ -210,6 +227,7 @@ while run :
 
             if event.key == K_w and air_timer < 10 :
                 momentum = -5
+                jump_sound.play()
 
         if event.type == KEYUP :
             if event.key == K_a :
@@ -225,6 +243,11 @@ while run :
     if collision_types["top"] or collision_types["bottom"] :
         momentum = 0
         air_timer = 0
+
+        if player_movement[0] != 0 and grass_sound_timer == 0 :
+            grass_sound_timer = 30
+            random.choice(grass_sounds).play()
+            
 
     else :
         air_timer += 1
