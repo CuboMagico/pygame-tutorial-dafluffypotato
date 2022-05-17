@@ -25,6 +25,8 @@ player_rect = pygame.rect.Rect(50, 100, player.get_width(), player.get_height())
 grass = pygame.image.load("./images/grass.png")
 dirt = pygame.image.load("./images/dirt.png")
 
+global animation_frames
+animation_frames = {}
 
 gravity = GRAVITY
 momentum = VERTICAL_MOMENTUM
@@ -36,7 +38,7 @@ true_scroll = [0, 0]
 moving_left = moving_right = False
 
 
-
+animation_database = {}
 
 
 def collision_test (rect : Rect, tiles : List[Rect]) -> List[Rect] :
@@ -79,8 +81,8 @@ def move (rect : Rect, movement : List, tiles : List) :
     return rect, collision_types
 
 
-def load_map (map : str) -> List[str] :
-    with open(f"./{map}.txt", "r") as file:
+def load_map (path : str) -> List[str] :
+    with open(f"./{path}.txt", "r") as file:
         map = file.read().split("\n")
         game_map = []
 
@@ -90,6 +92,43 @@ def load_map (map : str) -> List[str] :
 
         return game_map
 
+
+def load_animation (path, frame_duration) :
+    global animation_frames
+    animation_name = path.split("/")[-1]
+    animation_frame_data = []
+
+    n = 0
+    for frame in frame_duration :
+        animation_frame_id = animation_name + "_" + str(n)
+        img_loc = "./images/" + path + "/" + animation_frame_id + ".png"
+
+        animation_image = pygame.image.load(img_loc)
+        animation_image.set_colorkey(COLOR_KEY)
+
+        animation_frames[animation_frame_id] = animation_image.copy()
+        for i in range(frame) :
+            animation_frame_data.append(animation_frame_id)
+        n += 1
+
+    return animation_frame_data
+
+
+def change_action (action, frame, new_value) :
+    if action != new_value :
+        action = new_value
+        frame = 0
+
+    return action, frame
+
+
+animation_database["run"] = load_animation("player_animations/run", [7, 7])
+animation_database["idle"] = load_animation("player_animations/idle", [7, 7, 40])
+
+
+player_action = "idle"
+player_frame = 0
+player_flip = False
 
 run = True
 while run :
@@ -150,13 +189,9 @@ while run :
 
     if moving_right :
         player_movement[0] += 2
-        player = pygame.image.load("./images/player.png")
-        player.set_colorkey(COLOR_KEY)
 
-    if moving_left :
+    elif moving_left :
         player_movement[0] -= 2
-        player = pygame.transform.flip(pygame.image.load("./images/player.png"), True, False)
-        player.set_colorkey(COLOR_KEY)
 
 
 
@@ -199,13 +234,30 @@ while run :
     if momentum > 5 :
         momentum = 5
 
-    # print(collision_types)
 
     player_rect, collision_types = move(player_rect, player_movement, hit_list) # Definição de movimentação
 
     # Renderização na tela
+    player_frame += 1
+    if player_frame >= len(animation_database[player_action]) :
+        player_frame = 0
 
-    display.blit(player, (player_rect.x - scroll[0], player_rect.y - scroll[1]))
+
+    player_img_id = animation_database[player_action][player_frame]
+    player = animation_frames[player_img_id]
+
+    if player_movement[0] > 0 :
+        player_action, player_frame = change_action(player_action, player_frame, "run")
+        player_flip = False
+
+    elif player_movement[0] < 0 :
+        player_action, player_frame = change_action(player_action, player_frame, "run")
+        player_flip = True
+    
+    else :
+        player_action, player_frame = change_action(player_action, player_frame, "idle")
+    
+    display.blit(pygame.transform.flip(player, player_flip, False), (player_rect.x - scroll[0], player_rect.y - scroll[1]))
     screen.blit(pygame.transform.scale(display, WINDOW_SIZE), (0, 0))
 
     # Configurações
