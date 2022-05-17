@@ -1,4 +1,3 @@
-from math import ceil, floor
 import pygame, sys
 from pygame.locals import *
 
@@ -21,7 +20,7 @@ collision_types = { "top" : False, "bottom" : False, "left" : False, "right" : F
 
 player = pygame.image.load("./images/player.png")
 player.set_colorkey(COLOR_KEY)
-player_rect = pygame.rect.Rect(0, 0, player.get_width(), player.get_height())
+player_rect = pygame.rect.Rect(50, 100, player.get_width(), player.get_height())
 
 grass = pygame.image.load("./images/grass.png")
 dirt = pygame.image.load("./images/dirt.png")
@@ -31,7 +30,13 @@ gravity = GRAVITY
 momentum = VERTICAL_MOMENTUM
 air_timer = 0
 
+scroll = [0, 0]
+true_scroll = [0, 0]
+
 moving_left = moving_right = False
+
+
+
 
 
 def collision_test (rect : Rect, tiles : List[Rect]) -> List[Rect] :
@@ -74,22 +79,52 @@ def move (rect : Rect, movement : List, tiles : List) :
     return rect, collision_types
 
 
+def load_map (map : str) -> List[str] :
+    with open(f"./{map}.txt", "r") as file:
+        map = file.read().split("\n")
+        game_map = []
+
+        for row in map :
+            game_map.append(list(row))
+        file.close()
+
+        return game_map
+
+
 run = True
 while run :
 
 
-    # Preenchimento de fundo
+    # Preenchimento de fundo e paralax
 
     display.fill(SKY_BLUE)
 
+    pygame.draw.rect(display, BACKGRUND_LIME_GREEN_STANDARD, pygame.Rect(0, 120, 300, 80))
+    for item in BACKGROUND :
+        obj_back_speed = item[0]
+        obj_rect = pygame.rect.Rect(item[1][0] - scroll[0] * obj_back_speed, item[1][1], item[1][2], item[1][3])
 
+        if item[0] == 0.5 :
+            pygame.draw.rect(display, BACKGRUND_LIME_GREEN_PRIMARY, obj_rect)
+        
+        else :
+            pygame.draw.rect(display, BACKGRUND_LIME_GREEN_SECONDARY, obj_rect)
+
+
+    # Câmera
+
+    true_scroll[0] += (player_rect.x - true_scroll[0] - RESOLUTION[0] / 2) / 20
+    true_scroll[1] += (player_rect.y - true_scroll[1] - RESOLUTION[1] / 2) / 20
+
+    scroll[0] = int(true_scroll[0])
+    scroll[1] = int(true_scroll[1])
 
     # Renderização do mapa
 
     hit_list = []
 
     y_tile = 0
-    for row in MAP :
+    for row in load_map("map") :
         x_tile = 0
 
         for tile in row :
@@ -97,10 +132,10 @@ while run :
                 hit_list.append(pygame.rect.Rect(x_tile, y_tile, 16, 16))
 
             if tile == "1" :
-                display.blit(grass, (x_tile, y_tile))
+                display.blit(grass, (x_tile - scroll[0], y_tile - scroll[1]))
 
             elif tile == "2" :
-                display.blit(dirt, (x_tile, y_tile))
+                display.blit(dirt, (x_tile - scroll[0], y_tile - scroll[1]))
 
 
             x_tile += 16
@@ -111,8 +146,6 @@ while run :
     # Movimentação do player
 
     player_movement = [0, 0]
-
-    print(momentum)
     
 
     if moving_right :
@@ -124,7 +157,6 @@ while run :
         player_movement[0] -= 2
         player = pygame.transform.flip(pygame.image.load("./images/player.png"), True, False)
         player.set_colorkey(COLOR_KEY)
-
 
 
 
@@ -173,7 +205,7 @@ while run :
 
     # Renderização na tela
 
-    display.blit(player, (player_rect.x, player_rect.y))
+    display.blit(player, (player_rect.x - scroll[0], player_rect.y - scroll[1]))
     screen.blit(pygame.transform.scale(display, WINDOW_SIZE), (0, 0))
 
     # Configurações
