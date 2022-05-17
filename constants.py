@@ -1,0 +1,12 @@
+# Definições
+
+WINDOW_SIZE = (400, 400)
+
+GRAVITY = 5
+VERTICAL_MOMENTUM = 0.2
+
+
+
+# Cores
+
+SKY_BLUE = (146, 244, 255)
