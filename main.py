@@ -8,7 +8,6 @@ from typing import List
 
 clock = pygame.time.Clock()
 
-
 pygame.init()
 pygame.mixer.pre_init()
 
@@ -20,9 +19,7 @@ display = pygame.surface.Surface(RESOLUTION)
 
 collision_types = { "top" : False, "bottom" : False, "left" : False, "right" : False }
 
-player = pygame.image.load("./images/player.png")
-player.set_colorkey(COLOR_KEY)
-player_rect = pygame.rect.Rect(50, 100, player.get_width(), player.get_height())
+player_rect = pygame.rect.Rect(50, 100, 5, 13)
 
 grass = pygame.image.load("./images/grass.png")
 grass_sounds = [pygame.mixer.Sound("./sounds/grass_0.wav"), pygame.mixer.Sound("./sounds/grass_1.wav")]
@@ -34,6 +31,10 @@ pygame.mixer.music.load("./sounds/music.wav")
 pygame.mixer.music.play(-1)
 
 dirt = pygame.image.load("./images/dirt.png")
+plant_img = pygame.image.load("./images/plant.png")
+plant_img.set_colorkey(COLOR_KEY)
+
+tile_index = { 1 : grass, 2 : dirt, 3 : plant_img}
 
 global animation_frames
 animation_frames = {}
@@ -52,6 +53,30 @@ moving_left = moving_right = False
 
 
 animation_database = {}
+
+def generate_chunk (x, y) :
+    chunck_data = []
+
+    for y_pos in range(CHUNCK_SIZE) :
+        for x_pos in range(CHUNCK_SIZE) :
+            target_x = x * CHUNCK_SIZE + x_pos
+            target_y = y * CHUNCK_SIZE + y_pos
+            tile_type = 0
+
+            if target_y > 10 :
+                tile_type = 2
+
+            elif target_y == 10 :
+                tile_type = 1
+
+            elif target_y == 9 :
+                if random.randint(1, 5) == 1 :
+                    tile_type = 3
+
+            if tile_type != 0 :
+                chunck_data.append([[target_x, target_y], tile_type])
+    
+    return chunck_data
 
 
 def collision_test (rect : Rect, tiles : List[Rect]) -> List[Rect] :
@@ -104,6 +129,8 @@ def load_map (path : str) -> List[str] :
         file.close()
 
         return game_map
+
+game_map = {}
 
 
 def load_animation (path, frame_duration) :
@@ -162,6 +189,21 @@ while run :
             pygame.draw.rect(display, BACKGRUND_LIME_GREEN_SECONDARY, obj_rect)
 
 
+    tile_rects = []
+    for y in range(3) :
+        for x in range(4) :
+            target_x = x - 1 + int(round(scroll[0] / (CHUNCK_SIZE * 16)))
+            target_y = y - 1 + int(round(scroll[1] / (CHUNCK_SIZE * 16)))
+            target_chunck = f"{target_x};{target_y}"
+
+            if target_chunck not in game_map :
+                game_map[target_chunck] = generate_chunk(target_x, target_y)
+
+            for tile in game_map[target_chunck] :
+                display.blit(tile_index[tile[1]], (tile[0][0] * 16 - scroll[0], tile[0][1] * 16 - scroll[1]))
+                if tile[1] in [1, 2] :
+                    tile_rects.append(pygame.Rect(tile[0][0] * 16, tile[0][1] * 16, 16, 16))
+
     # Câmera
 
     true_scroll[0] += (player_rect.x - true_scroll[0] - RESOLUTION[0] / 2) / 20
@@ -172,25 +214,25 @@ while run :
 
     # Renderização do mapa
 
-    hit_list = []
+    # hit_list = []
 
-    y_tile = 0
-    for row in load_map("map") :
-        x_tile = 0
+    # y_tile = 0
+    # for row in game_map :
+    #     x_tile = 0
 
-        for tile in row :
-            if tile != "0" :
-                hit_list.append(pygame.rect.Rect(x_tile, y_tile, 16, 16))
+    #     for tile in row :
+    #         if tile != "0" :
+    #             hit_list.append(pygame.rect.Rect(x_tile, y_tile, 16, 16))
 
-            if tile == "1" :
-                display.blit(grass, (x_tile - scroll[0], y_tile - scroll[1]))
+    #         if tile == "1" :
+    #             display.blit(grass, (x_tile - scroll[0], y_tile - scroll[1]))
 
-            elif tile == "2" :
-                display.blit(dirt, (x_tile - scroll[0], y_tile - scroll[1]))
+    #         elif tile == "2" :
+    #             display.blit(dirt, (x_tile - scroll[0], y_tile - scroll[1]))
 
 
-            x_tile += 16
-        y_tile += 16
+    #         x_tile += 16
+    #     y_tile += 16
 
 
     # Sound effects
@@ -258,7 +300,7 @@ while run :
         momentum = 5
 
 
-    player_rect, collision_types = move(player_rect, player_movement, hit_list) # Definição de movimentação
+    player_rect, collision_types = move(player_rect, player_movement, tile_rects) # Definição de movimentação
 
     # Renderização na tela
     player_frame += 1
