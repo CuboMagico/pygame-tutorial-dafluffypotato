@@ -2,6 +2,7 @@ import pygame, sys, random
 from pygame.locals import *
 
 from constants import *
+import data.engine as engine
 
 from typing import List
 
@@ -19,19 +20,21 @@ display = pygame.surface.Surface(RESOLUTION)
 
 collision_types = { "top" : False, "bottom" : False, "left" : False, "right" : False }
 
+engine.load_animations("data/images/entities/")
+player = engine.entity(100, 100, 5, 13, "player")
 player_rect = pygame.rect.Rect(50, 100, 5, 13)
 
-grass = pygame.image.load("./images/grass.png")
-grass_sounds = [pygame.mixer.Sound("./sounds/grass_0.wav"), pygame.mixer.Sound("./sounds/grass_1.wav")]
+grass = pygame.image.load("data/images/grass.png")
+grass_sounds = [pygame.mixer.Sound("data/sounds/grass_0.wav"), pygame.mixer.Sound("data/sounds/grass_1.wav")]
 grass_sounds[0].set_volume(0.2)
 grass_sounds[1].set_volume(0.2)
 grass_sound_timer = 0
 
-pygame.mixer.music.load("./sounds/music.wav")
+pygame.mixer.music.load("data/sounds/music.wav")
 pygame.mixer.music.play(-1)
 
-dirt = pygame.image.load("./images/dirt.png")
-plant_img = pygame.image.load("./images/plant.png")
+dirt = pygame.image.load("data/images/dirt.png")
+plant_img = pygame.image.load("data/images/plant.png")
 plant_img.set_colorkey(COLOR_KEY)
 
 tile_index = { 1 : grass, 2 : dirt, 3 : plant_img}
@@ -43,7 +46,7 @@ gravity = GRAVITY
 momentum = VERTICAL_MOMENTUM
 air_timer = 0
 
-jump_sound = pygame.mixer.Sound("./sounds/jump.wav")
+jump_sound = pygame.mixer.Sound("data/sounds/jump.wav")
 
 
 scroll = [0, 0]
@@ -78,97 +81,8 @@ def generate_chunk (x, y) :
     
     return chunck_data
 
-
-def collision_test (rect : Rect, tiles : List[Rect]) -> List[Rect] :
-    hit_list = []
-
-    for tile in tiles :
-        if rect.colliderect(tile) :
-            hit_list.append(tile)
-            pygame.draw.rect(screen, (255, 0, 0), tile)
-
-    return hit_list
-
-
-def move (rect : Rect, movement : List, tiles : List) :
-    collision_types = { "top" : False, "bottom" : False, "left" : False, "right" : False }
-
-    rect.x += movement[0]
-    hit_list : List = collision_test(rect, tiles)
-    for tile in hit_list :
-        if movement[0] > 0 :
-            rect.right = tile.left
-            collision_types["right"] = True
-        
-        elif movement[0] < 0 :
-            rect.left = tile.right
-            collision_types["left"] = True
-
-    rect.y += movement[1]
-    hit_list = collision_test(rect, tiles)
-    for tile in hit_list :
-        if movement[1] > 0 :
-            rect.bottom = tile.top
-            collision_types["bottom"] = True
-
-        
-        elif movement[1] < 0 :
-            rect.top = tile.bottom
-            collision_types["top"] = True
-
-    return rect, collision_types
-
-
-def load_map (path : str) -> List[str] :
-    with open(f"./{path}.txt", "r") as file:
-        map = file.read().split("\n")
-        game_map = []
-
-        for row in map :
-            game_map.append(list(row))
-        file.close()
-
-        return game_map
-
 game_map = {}
 
-
-def load_animation (path, frame_duration) :
-    global animation_frames
-    animation_name = path.split("/")[-1]
-    animation_frame_data = []
-
-    n = 0
-    for frame in frame_duration :
-        animation_frame_id = animation_name + "_" + str(n)
-        img_loc = "./images/" + path + "/" + animation_frame_id + ".png"
-
-        animation_image = pygame.image.load(img_loc)
-        animation_image.set_colorkey(COLOR_KEY)
-
-        animation_frames[animation_frame_id] = animation_image.copy()
-        for i in range(frame) :
-            animation_frame_data.append(animation_frame_id)
-        n += 1
-
-    return animation_frame_data
-
-
-def change_action (action, frame, new_value) :
-    if action != new_value :
-        action = new_value
-        frame = 0
-
-    return action, frame
-
-
-animation_database["run"] = load_animation("player_animations/run", [7, 7])
-animation_database["idle"] = load_animation("player_animations/idle", [7, 7, 40])
-
-
-player_action = "idle"
-player_frame = 0
-player_flip = False
 
 run = True
 while run :
@@ -206,33 +120,11 @@ while run :
 
     # Câmera
 
-    true_scroll[0] += (player_rect.x - true_scroll[0] - RESOLUTION[0] / 2) / 20
-    true_scroll[1] += (player_rect.y - true_scroll[1] - RESOLUTION[1] / 2) / 20
+    true_scroll[0] += (player.x - true_scroll[0] - RESOLUTION[0] / 2) / 20
+    true_scroll[1] += (player.y - true_scroll[1] - RESOLUTION[1] / 2) / 20
 
     scroll[0] = int(true_scroll[0])
     scroll[1] = int(true_scroll[1])
-
-    # Renderização do mapa
-
-    # hit_list = []
-
-    # y_tile = 0
-    # for row in game_map :
-    #     x_tile = 0
-
-    #     for tile in row :
-    #         if tile != "0" :
-    #             hit_list.append(pygame.rect.Rect(x_tile, y_tile, 16, 16))
-
-    #         if tile == "1" :
-    #             display.blit(grass, (x_tile - scroll[0], y_tile - scroll[1]))
-
-    #         elif tile == "2" :
-    #             display.blit(dirt, (x_tile - scroll[0], y_tile - scroll[1]))
-
-
-    #         x_tile += 16
-    #     y_tile += 16
 
 
     # Sound effects
@@ -251,7 +143,6 @@ while run :
 
     elif moving_left :
         player_movement[0] -= 2
-
 
 
     # Eventos e captura de teclas
@@ -300,29 +191,25 @@ while run :
         momentum = 5
 
 
-    player_rect, collision_types = move(player_rect, player_movement, tile_rects) # Definição de movimentação
+    collision_types = player.move(player_movement, tile_rects) # Definição de movimentação
 
     # Renderização na tela
-    player_frame += 1
-    if player_frame >= len(animation_database[player_action]) :
-        player_frame = 0
+    player.change_frame(1)
+    player.display(display, scroll)
 
-
-    player_img_id = animation_database[player_action][player_frame]
-    player = animation_frames[player_img_id]
 
     if player_movement[0] > 0 :
-        player_action, player_frame = change_action(player_action, player_frame, "run")
-        player_flip = False
+        player.set_action("run")
+        player.set_flip(False)
 
     elif player_movement[0] < 0 :
-        player_action, player_frame = change_action(player_action, player_frame, "run")
-        player_flip = True
+        player.set_action("run")
+        player.set_flip(True)
     
     else :
-        player_action, player_frame = change_action(player_action, player_frame, "idle")
+        player.set_action("idle")
     
-    display.blit(pygame.transform.flip(player, player_flip, False), (player_rect.x - scroll[0], player_rect.y - scroll[1]))
+
     screen.blit(pygame.transform.scale(display, WINDOW_SIZE), (0, 0))
 
     # Configurações
