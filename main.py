@@ -81,7 +81,35 @@ def generate_chunk (x, y) :
     
     return chunck_data
 
+
+class Jumper_obj :
+    
+    def __init__ (self, loc : List) :
+        self.loc = loc
+        self.jumper_img = pygame.image.load("data/images/jumper.png")
+        self.jumper_img.set_colorkey(COLOR_KEY)
+    
+    def render (self, surf : pygame.Surface, scroll) :
+        surf.blit(self.jumper_img, (self.loc[0] - scroll[0], self.loc[1] - scroll[1]))
+
+    def get_rect (self) :
+        return pygame.Rect(self.loc[0], self.loc[1], 8, 9)
+
+    def collision_test (self, rect) :
+        jumper_rect = self.get_rect()
+        return jumper_rect.colliderect(rect)
+
+
 game_map = {}
+
+enimies_objs = []
+for i in range(5) :
+    enimies_objs.append([0, engine.entity(random.randint(0, 60) * 10 - 300, 80, 13, 13, "enemy")])
+
+
+jumper_objs : List[Jumper_obj] = []
+for i in range(5) :
+    jumper_objs.append(Jumper_obj((random.randint(0, 60) * 10 - 300, 100)))
 
 
 run = True
@@ -143,6 +171,40 @@ while run :
 
     elif moving_left :
         player_movement[0] -= 2
+
+
+    for jumper in jumper_objs :
+        jumper.render(display, scroll)
+        if jumper.collision_test(player.obj.rect) :
+            momentum = -8
+
+    display_r = pygame.Rect(scroll[0], scroll[1], RESOLUTION[0], RESOLUTION[1])
+    
+    for enemy in enimies_objs :
+        if display_r.colliderect(enemy[1].obj.rect) :
+            enemy[0] += 0.2
+            if enemy[0] > 3 :
+                enemy[0] = 3
+
+            enemy_movement = [0, enemy[0]]
+
+            if player.x > enemy[1].x - 5 :
+                enemy_movement[0] = 1
+            
+            elif player.x < enemy[1].x + 5:
+                enemy_movement[0] = -1
+
+            e_collision_types = enemy[1].move(enemy_movement, tile_rects)
+            if e_collision_types["bottom"] :
+                enemy[0] = 0
+
+            enemy[1].display(display, scroll)
+
+            if player.obj.rect.colliderect(enemy[1].obj.rect) :
+                momentum = -4
+
+
+        
 
 
     # Eventos e captura de teclas
